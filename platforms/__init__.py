@@ -1,6 +1,6 @@
 """The overlay's OS-specific parts behind one interface (base.Platform), one implementation
 per OS. create_platform() builds the one for the OS it's running on; only that OS's module is
-imported, so Windows' DLLs are never loaded on macOS and the other way round."""
+imported, so Windows' DLLs are never loaded on macOS or Linux and the other way round."""
 import sys
 
 from .base import Hotkeys, Platform, hotkey_text, parse_hotkey
@@ -16,4 +16,7 @@ def create_platform(name=sys.platform):
     if name == "darwin":
         from .macos import MacPlatform
         return MacPlatform()
-    raise RuntimeError(f"Maple Classic Exp Overlay runs on Windows and macOS, not {name}.")
+    if name.startswith("linux"):
+        from .linux import LinuxPlatform
+        return LinuxPlatform()
+    raise RuntimeError(f"Maple Classic Exp Overlay runs on Windows, macOS and Linux, not {name}.")

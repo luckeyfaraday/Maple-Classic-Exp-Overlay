@@ -1,5 +1,5 @@
 # Runs the overlay's tests on every push and pull request: on Windows (the real thing, with
-# the exact packages the downloads are built with) and on macOS (running from source). Pull
+# the exact packages the downloads are built with), on macOS and on Linux (running from source). Pull
 # requests from other people's copies of the repo get a read-only token and no secrets
 # (GitHub's rule for pull_request), so their code can't change anything here.
 name: Tests
@@ -87,3 +87,38 @@ jobs:
         run: python tests/test_ocr.py
       - name: Window tests (the notes box, in the real window)
         run: python tests/test_ui.py
+
+  linux:
+    # The overlay on Linux (the game under Wine, Proton, Lutris or Bottles): running from source, the window
+    # tests under a virtual screen (Xvfb), plus the Linux backend against a stand-in game window.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install Tesseract, a virtual screen and the packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr xvfb
+          python -m pip install -r requirements.txt
+      - name: Logic tests
+        run: python tests/test_logic.py
+      - name: Screen-reading tests
+        run: python tests/test_screen.py
+      - name: Health report tests
+        run: python tests/test_health.py
+      - name: Reader v2 shared pieces tests
+        run: python tests/test_v2.py
+      - name: Build plan and Mac test build tests
+        run: python tests/test_release.py
+      - name: Bug report tests
+        run: python tests/test_report.py
+      - name: Text-reading tests (Tesseract, when installed)
+        run: python tests/test_ocr.py
+      - name: Window tests (the notes box, in the real window, on a virtual screen)
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" python tests/test_ui.py
+      - name: Linux backend tests (a stand-in game window on a virtual screen)
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" python tests/test_linux.py

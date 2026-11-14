@@ -41,6 +41,29 @@ It works with the game's own Mac version, or the Windows one through CrossOver, 
 
 Hotkeys aren't available on macOS yet.
 
+### On Linux
+
+For the Windows game under **Wine, Proton (Steam), Lutris or Bottles**. This is a port in a fork, not an official release: it never sends anything to mcwo.app (no run sharing, no health reports, no bug reports to the site).
+
+**From source** (any distro, Python 3.10 or newer):
+
+```
+sudo apt install python3-tk python3-venv tesseract-ocr     # Fedora: sudo dnf install python3-tkinter tesseract
+                                                           # Arch:   sudo pacman -S tk tesseract tesseract-data-eng
+git clone https://github.com/luckeyfaraday/Maple-Classic-Exp-Overlay && cd Maple-Classic-Exp-Overlay
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+./run.sh
+```
+
+**Or the built download** (x86_64, made by the Build workflow, or by `build_linux.py` yourself): extract `Maple-Classic-Exp-Overlay-v…-Linux-x86_64.tar.gz`, install Tesseract as above (for map names), and run `./Maple-Classic-Exp-Overlay` inside the folder.
+
+The game window is found by Wine's name for it (`maplestory.exe`) or by "MapleStory" in its title; if it isn't found, use **Select area**. Settings and the log are kept in `~/.local/share/MapleEXP`.
+
+![The overlay on Linux (Xvfb), reading a stand-in game window](docs/screenshot-linux.jpg)
+
+- **X11:** everything works, hotkeys included. With a compositor (most desktops) the game is read even where other windows cover it.
+- **Wayland:** works when the game runs through **XWayland**, which is Wine's default (it's an X11 window). Not with Wine's experimental Wayland driver (`winewayland`): switch it off for the game. On Wayland, hotkeys only work while the game or the overlay is in front, and **Always on top** may be ignored by the desktop (GNOME and KDE let you set it from the window's title bar menu).
+
 ## How to use it
 
 1. **Start MapleStory**, then the overlay. It finds the game window by itself.
@@ -58,7 +81,7 @@ Hotkeys aren't available on macOS yet.
 | **...** (More) | **View capture** shows what it read; **Select area** if it can't find the EXP numbers |
 | Log, compact and ⚙ icons | The log, a smaller window (Square, Wide or Bar), and Settings |
 
-Hotkeys (Windows): **Shift+1** Start/Pause, **Shift+2** Reset, **Shift+3** Log this run, **Shift+4** Compact. Change them in ⚙.
+Hotkeys (Windows and Linux): **Shift+1** Start/Pause, **Shift+2** Reset, **Shift+3** Log this run, **Shift+4** Compact. Change them in ⚙.
 
 **More:** the [full guide](docs/guide.md) has the log, compact shapes, hotkeys, every setting, net mesos and potions, the best-maps site and how accurate it is.
 

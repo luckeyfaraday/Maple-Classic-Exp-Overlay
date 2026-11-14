@@ -6,6 +6,7 @@
 #            VERSION and server/src/released.js, or gives a Mac test build its own version.
 #   build    Windows: tests, builds, signs the .exe once SignPath is set up, keeps the zip. Read-only token.
 #   macos    Mac (Apple Silicon and Intel): builds Tesseract, tests, builds the .dmg, checks it. Read-only token.
+#   linux    Linux (x86_64): tests, builds the .tar.gz (build_linux.py), starts it once. Read-only token.
 #   release  puts every file together: one SHA256SUMS.txt, a signed attestation for each file (this workflow built
 #            it from this commit), checks the attestations itself, and makes ONE DRAFT release with all the files.
 #            A person reads it over and publishes it. It never uses --clobber and never changes a release that
@@ -13,7 +14,7 @@
 #            repo code: the jobs that install packages and run tests can't write a release or sign anything.
 #
 # Tags:
-#   v0.9.16-beta             Windows zip + both Mac .dmg files in one draft release. The tag must match VERSION in
+#   v0.9.16-beta             Windows zip + both Mac .dmg files + the Linux .tar.gz in one draft release. The tag must match VERSION in
 #                            maple_exp.py, and VERSION must be listed in server/src/released.js.
 #   mac-test-v0.9.16-beta.1  Macs only, a draft PRE-release (never "latest"). The build calls itself 0.9.16-mactest.1
 #                            and sends nothing (maple_exp.sharing_blocked), so a test download can't reach mcwo.app.
@@ -217,11 +218,66 @@ jobs:
             build/macos/work/*/warn-*.txt
           if-no-files-found: warn
 
+  linux:
+    # The Linux download: a .tar.gz of the PyInstaller folder, made by build_linux.py on the oldest Ubuntu runner
+    # (the program runs on distros with that glibc or newer). Tesseract isn't packed: players install their
+    # distro's. Read-only, like the other build jobs.
+    needs: plan
+    if: needs.plan.outputs.kind != 'mactest'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install Tesseract and a virtual screen (for the tests)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr xvfb
+      - name: Install the packages (exact files, each checked by its SHA-256)
+        run: python -m pip install --require-hashes -r requirements-build-linux.txt
+      - name: Tests
+        run: |
+          python tests/test_logic.py
+          python tests/test_screen.py
+          python tests/test_ocr.py
+          python tests/test_report.py
+          python tests/test_health.py
+          python tests/test_v2.py
+          python tests/test_release.py
+          xvfb-run -a -s "-screen 0 1920x1080x24" python tests/test_linux.py
+      - name: Build
+        run: python build_linux.py
+      - name: Start the build once (it must keep running, with no errors)
+        run: xvfb-run -a -s "-screen 0 1920x1080x24" python build_linux.py check
+      - name: SHA-256 of the download
+        id: sum
+        shell: bash
+        run: |
+          cd release
+          sha256sum *.tar.gz | tee SHA256SUMS-Linux.txt
+          echo "tgz=release/$(ls *.tar.gz)" >> "$GITHUB_OUTPUT"
+          { echo "### The Linux download"; echo; echo '```'; cat SHA256SUMS-Linux.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the download on this run's page (the .tar.gz itself, not wrapped in a zip)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          path: ${{ steps.sum.outputs.tgz }}
+          archive: false
+      - name: Keep its checksum on this run's page
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          path: release/SHA256SUMS-Linux.txt
+          archive: false
+
   release:
     # Only runs when everything it needs was built (a Mac test run has no Windows build: skipped on purpose).
     # No checkout and no repo code here: it only handles the files the other jobs made.
-    needs: [plan, build, macos]
-    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.macos.result == 'success' && (needs.build.result == 'success' || (needs.plan.outputs.kind == 'mactest' && needs.build.result == 'skipped')) }}
+    needs: [plan, build, macos, linux]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.macos.result == 'success' && ((needs.build.result == 'success' && needs.linux.result == 'success') || (needs.plan.outputs.kind == 'mactest' && needs.build.result == 'skipped' && needs.linux.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write             # the draft release (tags only)
@@ -254,11 +310,19 @@ jobs:
           merge-multiple: true
           skip-decompress: true     # (a .zip would be unpacked otherwise: the download itself must arrive)
           path: files
+      - name: Get the Linux download
+        if: env.KIND != 'mactest'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+        with:
+          pattern: "*.tar.gz"
+          merge-multiple: true
+          skip-decompress: true
+          path: files
       - name: Check every file against its own job's checksum, and put the checksums together
         shell: bash
         run: |
           expect="SHA256SUMS-macOS-AppleSilicon.txt SHA256SUMS-macOS-Intel.txt"
-          [ "$KIND" = mactest ] || expect="SHA256SUMS-Windows.txt $expect"
+          [ "$KIND" = mactest ] || expect="SHA256SUMS-Windows.txt SHA256SUMS-Linux.txt $expect"
           have=$(cd parts && ls | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
           want=$(echo "$expect" | tr ' ' '\n' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')
           if [ "$have" != "$want" ]; then
@@ -334,7 +398,7 @@ jobs:
             while read -r hash name; do
               echo "- SHA-256 of $name: \`$hash\` (also in SHA256SUMS.txt)"
             done < files/SHA256SUMS.txt
-            echo "- On Windows, in PowerShell: \`Get-FileHash .\\<the file>\`. On a Mac, in Terminal: \`shasum -a 256 <the file>\`"
+            echo "- On Windows, in PowerShell: \`Get-FileHash .\\<the file>\`. On a Mac, in Terminal: \`shasum -a 256 <the file>\`. On Linux: \`sha256sum <the file>\`"
             echo "- Built by GitHub from this tag, not on a PC. Check a file with the GitHub CLI: \`gh attestation verify <the file> --repo $GITHUB_REPOSITORY\`"
             echo "- The same files are on [the build's page]($run), where GitHub shows the same SHA-256 for each."
           } > notes.md

@@ -1,0 +1,14 @@
+# The Linux build's exact packages (x86_64, Python 3.12), each file checked by its SHA-256 against PyPI.
+# Install: python -m pip install --require-hashes -r requirements-build-linux.txt
+# Same versions as requirements-build.txt (Windows) minus pefile/pywin32-ctypes, plus python-xlib (and six, which it needs).
+altgraph==0.17.5 --hash=sha256:f3a22400bce1b0c701683820ac4f3b159cd301acab067c51c653e06961600597  # altgraph-0.17.5-py2.py3-none-any.whl
+mss==10.1.0 --hash=sha256:9179c110cadfef5dc6dc4a041a0cd161c74c379218648e6640b48c6b5cfe8918  # mss-10.1.0-py3-none-any.whl
+numpy==2.2.6 --hash=sha256:fd83c01228a688733f1ded5201c678f0c53ecc1006ffbc404db9f7a899ac6249  # numpy-2.2.6-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+opencv-python-headless==4.12.0.88 --hash=sha256:236c8df54a90f4d02076e6f9c1cc763d794542e886c576a6fee46ec8ff75a7a9  # opencv_python_headless-4.12.0.88-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+packaging==25.0 --hash=sha256:29572ef2b1f17581046b3a2227d5c611fb25ec70ca1ba8554b24b0e69331a484  # packaging-25.0-py3-none-any.whl
+pillow==12.3.0 --hash=sha256:78cb2c6865a35ab8ff8b75fd122f6033b92a62c82801110e48ddd6c936a45d91  # pillow-12.3.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+pyinstaller==6.17.0 --hash=sha256:2a147b83cdebb07855bd5a663600891550062373a2ca375c58eacead33741a27  # pyinstaller-6.17.0-py3-none-manylinux2014_x86_64.whl
+pyinstaller-hooks-contrib==2025.10 --hash=sha256:aa7a378518772846221f63a84d6306d9827299323243db890851474dfd1231a9  # pyinstaller_hooks_contrib-2025.10-py3-none-any.whl
+python-xlib==0.33 --hash=sha256:c3534038d42e0df2f1392a1b30a15a4ff5fdc2b86cfa94f072bf11b10a164398  # python_xlib-0.33-py2.py3-none-any.whl
+setuptools==83.0.0 --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3  # setuptools-83.0.0-py3-none-any.whl
+six==1.17.0 --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274  # six-1.17.0-py2.py3-none-any.whl
