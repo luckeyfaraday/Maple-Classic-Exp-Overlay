@@ -252,7 +252,7 @@ for name, bad in (("a string", "x"), ("a 2 MB string", "a" * 2_000_000), ("a lis
         cfg = m.load_config()
         check(f"{key} damaged as {name} is dropped, ui_scale kept", key not in cfg and cfg["ui_scale"] == 150)
 check(f"the right OS backend is made for {sys.platform} ({type(m.PLATFORM).__name__})",
-      type(m.PLATFORM).__name__ == {"win32": "WindowsPlatform", "darwin": "MacPlatform"}.get(sys.platform))
+      type(m.PLATFORM).__name__ == {"win32": "WindowsPlatform", "darwin": "MacPlatform", "linux": "LinuxPlatform"}.get(sys.platform))
 try:
     m.create_platform("plan9")
     unsupported = False
@@ -291,6 +291,20 @@ if sys.platform == "darwin":
           and not macos.is_game(W(7, 14, "MapleStory Classic World", "", 101, (0, 0, 200, 100), True), 99))
     check("macOS windows can be listed", isinstance(macos.window_list(), list))
     check("a macOS window that isn't there can't be pictured", m.PLATFORM.capture_window(2 ** 31 - 1, 0, 0, 200, 100) is None)
+if sys.platform.startswith("linux"):
+    from platforms import linux
+    check("on Linux the game is told apart from browsers, terminals and the overlay itself",
+          linux.is_game(("maplestory.exe", "maplestory.exe"), "", 10, 99)
+          and linux.is_game(("steam_app_216150", "steam_app_216150"), "MapleStory", 11, 99)
+          and linux.is_game(("explorer.exe", "Wine"), "MapleStory Classic World", 0, 99)
+          and not linux.is_game(("Navigator", "firefox"), "MapleStory Classic guide", 12, 99)
+          and not linux.is_game(("gnome-terminal-server", "Gnome-terminal"), "MapleStory", 13, 99)
+          and not linux.is_game(("python3", "Tk"), "MapleStory", 99, 99))
+    check("on Linux the overlay's hotkeys map to X11 keys and modifiers",
+          linux.keysym_of(0x31) == 0x31 and linux.keysym_of(0x41) == 0x61 and linux.keysym_of(0x70) == 0xFFBE
+          and linux.keysym_of(0x7B) == 0xFFC9 and linux.x11_mods(0x2 | 0x4) == 0x5 and linux.x11_mods(0x1) == 0x8)
+    check("on Linux the data folder follows XDG (~/.local/share)", m.PLATFORM.data_root().is_absolute())
+    check("a Linux window that isn't there has no rectangle", m.PLATFORM.client_rect(2 ** 29 - 1) is None)
 check("release notes are shown as plain text, keeping names like exp_log.txt",
       m._plain_text("**New**\n- **Time** in `exp_log.txt`, see [README](https://x)") == "New\n• Time in exp_log.txt, see README")
 # B06-1: hostile release notes / version names (a broken or tampered GitHub answer) can't freeze or stretch the overlay

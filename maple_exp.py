@@ -11,9 +11,9 @@ map, level and party size.
 
 It only looks at the screen: it never reads or changes the game's files or memory and
 never sends input to the game. Your settings and log are kept in the MapleEXP folder
-inside %APPDATA% on Windows, ~/Library/Application Support on macOS (named after its old
-name, Maple EXP/hr, so updating keeps them). It runs on Windows and macOS: what differs
-between them is in platforms/.
+inside %APPDATA% on Windows, ~/Library/Application Support on macOS, ~/.local/share on Linux
+(named after its old name, Maple EXP/hr, so updating keeps them). It runs on Windows, macOS
+and Linux: what differs between them is in platforms/.
 """
 import contextlib
 import hashlib
@@ -70,7 +70,7 @@ from ui_kit import (ACCENT, ACCENT_SOFT, BAD, BG, DIM, FAINT, FG, GOOD, LINE, LI
                     ON_ACCENT, RAISED, RAISED_HI, SELECT, SURFACE, WARN, setup_ttk)
 from ui_main import SHAPES, Button, MainView, PopupMenu, Slider, Theme, Toggle
 
-# Everything that differs between Windows and macOS (finding the game window, screen scaling,
+# Everything that differs between Windows, macOS and Linux (finding the game window, screen scaling,
 # hotkeys...) is behind this one object: see platforms/.
 PLATFORM = create_platform()
 PLATFORM.setup_process()
@@ -492,8 +492,12 @@ def sharing_blocked():
     """True while testing: MAPLE_EXP_DATA moves the data folder, which only tests do, and what a test holds is
     made up, so nothing is sent unless MAPLE_EXP_ALLOW_SHARE says so. Also always true in a Mac test build (its
     VERSION has TEST_BUILD_MARK, put there by release_plan.py): that one sends and checks nothing, whatever
-    MAPLE_EXP_ALLOW_SHARE says."""
+    MAPLE_EXP_ALLOW_SHARE says. Always true on Linux too (unless MAPLE_EXP_ALLOW_SHARE, for a local copy of the
+    server): the Linux port is a changed copy, not an official release, and mcwo.app takes nothing from those
+    (docs/developers.md, "Forking or changing this code")."""
     if TEST_BUILD_MARK in VERSION:
+        return True
+    if PLATFORM.name == "Linux" and not os.environ.get("MAPLE_EXP_ALLOW_SHARE"):
         return True
     return bool(os.environ.get("MAPLE_EXP_DATA") and not os.environ.get("MAPLE_EXP_ALLOW_SHARE"))
 
